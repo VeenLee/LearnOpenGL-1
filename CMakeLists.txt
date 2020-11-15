@@ -30,7 +30,7 @@ message(STATUS "Found ASSIMP in ${ASSIMP_INCLUDE_DIR}")
 # message(STATUS "Found GLEW in ${GLEW_INCLUDE_DIR}")
 
 if(WIN32)
-  set(LIBS glfw3 opengl32 assimp)
+  set(LIBS glfw3 opengl32 assimp freetype irrKlang)
 elseif(UNIX AND NOT APPLE)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
   find_package(OpenGL REQUIRED)
@@ -38,7 +38,7 @@ elseif(UNIX AND NOT APPLE)
   find_package(X11 REQUIRED)
   # note that the order is important for setting the libs
   # use pkg-config --libs $(pkg-config --print-requires --print-requires-private glfw3) in a terminal to confirm
-  set(LIBS ${GLFW3_LIBRARY} X11 Xrandr Xinerama Xi Xxf86vm Xcursor GL dl pthread ${ASSIMP_LIBRARY})
+  set(LIBS ${GLFW3_LIBRARY} X11 Xrandr Xinerama Xi Xxf86vm Xcursor GL dl pthread freetype ${ASSIMP_LIBRARY})
   set (CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
 elseif(APPLE)
   INCLUDE_DIRECTORIES(/System/Library/Frameworks)
@@ -162,9 +162,8 @@ set(6.pbr
 
 set(7.in_practice
     1.debugging
-    # due to trickier build setups (other libs rarely used everywhere else) these examples won't compile through CMake, but source code is available.
-    # 2.text_rendering
-    # 3.2d_game
+    2.text_rendering
+    #3.2d_game
 )
 
 

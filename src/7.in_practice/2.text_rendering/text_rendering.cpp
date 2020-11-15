@@ -12,6 +12,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include <learnopengl/filesystem.h>
 #include <learnopengl/shader.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -76,66 +77,80 @@ int main()
     // ----------------------------
     Shader shader("text.vs", "text.fs");
     glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(SCR_WIDTH), 0.0f, static_cast<float>(SCR_HEIGHT));
-    shader.Use();
-    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    shader.use();
+    glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
     // FreeType
     // --------
     FT_Library ft;
     // All functions return a value different than 0 whenever an error occurred
     if (FT_Init_FreeType(&ft))
-        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-
-    // load font as face
-    FT_Face face;
-    if (FT_New_Face(ft, "fonts/arial.ttf", 0, &face))
-        std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
-
-    // set size to load glyphs as
-    FT_Set_Pixel_Sizes(face, 0, 48);
-
-    // disable byte-alignment restriction
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
-
-    // load first 128 characters of ASCII set
-    for (unsigned char c = 0; c < 128; c++)
     {
-        // Load character glyph 
-        if (FT_Load_Char(face, c, FT_LOAD_RENDER))
-        {
-            std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
-            continue;
-        }
-        // generate texture
-        unsigned int texture;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RED,
-            face->glyph->bitmap.width,
-            face->glyph->bitmap.rows,
-            0,
-            GL_RED,
-            GL_UNSIGNED_BYTE,
-            face->glyph->bitmap.buffer
-        );
-        // set texture options
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // now store character for later use
-        Character character = {
-            texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            face->glyph->advance.x
-        };
-        Characters.insert(std::pair<char, Character>(c, character));
+        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
+        return -1;
     }
-    glBindTexture(GL_TEXTURE_2D, 0);
+
+	// find path to font
+    std::string font_name = FileSystem::getPath("resources/fonts/Antonio-Bold.ttf");
+    if (font_name.empty())
+    {
+        std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
+        return -1;
+    }
+	
+	// load font as face
+    FT_Face face;
+    if (FT_New_Face(ft, font_name.c_str(), 0, &face)) {
+        std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
+        return -1;
+    }
+    else {
+        // set size to load glyphs as
+        FT_Set_Pixel_Sizes(face, 0, 48);
+
+        // disable byte-alignment restriction
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+        // load first 128 characters of ASCII set
+        for (unsigned char c = 0; c < 128; c++)
+        {
+            // Load character glyph 
+            if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+            {
+                std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
+                continue;
+            }
+            // generate texture
+            unsigned int texture;
+            glGenTextures(1, &texture);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RED,
+                face->glyph->bitmap.width,
+                face->glyph->bitmap.rows,
+                0,
+                GL_RED,
+                GL_UNSIGNED_BYTE,
+                face->glyph->bitmap.buffer
+            );
+            // set texture options
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            // now store character for later use
+            Character character = {
+                texture,
+                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+                static_cast<unsigned int>(face->glyph->advance.x)
+            };
+            Characters.insert(std::pair<char, Character>(c, character));
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
     // destroy FreeType once we're finished
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
@@ -179,34 +194,6 @@ int main()
     return 0;
 }
 
-// The MAIN function, from here we start our application and run the Game loop
-int main()
-{
-    // Init GLFW
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "LearnOpenGL", nullptr, nullptr); // Windowed
-    glfwMakeContextCurrent(window);
-
-    // Initialize GLEW to setup the OpenGL Function pointers
-    glewExperimental = GL_TRUE;
-    glewInit();
-
-    // Define the viewport dimensions
-    glViewport(0, 0, WIDTH, HEIGHT);
-
-    // Set OpenGL options
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    
-}
-
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
@@ -230,8 +217,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void RenderText(Shader &shader, std::string text, float x, float y, float scale, glm::vec3 color)
 {
     // activate corresponding render state	
-    shader.Use();
-    glUniform3f(glGetUniformLocation(shader.Program, "textColor"), color.x, color.y, color.z);
+    shader.use();
+    glUniform3f(glGetUniformLocation(shader.ID, "textColor"), color.x, color.y, color.z);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(VAO);
 
@@ -271,4 +258,3 @@ void RenderText(Shader &shader, std::string text, float x, float y, float scale,
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
-
